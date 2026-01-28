@@ -1,6 +1,6 @@
 # YouTube to Ebook
 
-> Forked from [zarazhangrui/youtube-to-ebook](https://github.com/zarazhangrui/youtube-to-ebook)
+> Forked from [zarazhangrui/youtube-to-ebook](https://github.com/zarazhangrui/youtube-to-ebook) - 特别致谢！
 
 将 YouTube 视频转换为精美的 EPUB 电子书。支持两种模式：
 - **视频转电子书**：指定视频 ID，直接生成电子书（新功能 ✨）
@@ -27,6 +27,8 @@ cp .env.example .env
 然后编辑 `.env` 文件，填入你的 API Keys：
 
 #### YouTube Data API (免费)
+
+> 仅「功能二：频道订阅周刊」需要，如果只使用视频转电子书功能可跳过此步骤。
 
 1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
 2. 创建新项目
@@ -60,6 +62,9 @@ cp .env.example .env
 ## 🎬 功能一：视频转电子书（新功能）
 
 直接将特定 YouTube 视频转换为 EPUB 电子书。
+
+> [!TIP]
+> 此功能**不需要 YouTube Data API**，只需配置 Claude API 即可使用。
 
 ### 命令行方式
 
