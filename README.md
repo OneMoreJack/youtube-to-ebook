@@ -1,125 +1,191 @@
 # YouTube to Ebook
 
-Transform YouTube videos from your favorite channels into beautifully formatted EPUB ebooks.
+> Forked from [zarazhangrui/youtube-to-ebook](https://github.com/zarazhangrui/youtube-to-ebook)
 
-## Features
+将 YouTube 视频转换为精美的 EPUB 电子书。支持两种模式：
+- **视频转电子书**：指定视频 ID，直接生成电子书（新功能 ✨）
+- **频道订阅周刊**：订阅多个频道，自动获取最新视频生成周刊
 
-- Fetches latest videos from YouTube channels (automatically filters out Shorts)
-- Extracts transcripts from videos
-- Uses Claude AI to transform transcripts into polished magazine-style articles
-- Generates EPUB ebooks readable on any device
-- Optional: Email delivery with ebook attachment
-- Optional: Web dashboard for easy management
+---
 
-## Quick Start
+## 🚀 快速开始
 
-1. **Clone and install:**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/youtube-to-ebook.git
-   cd youtube-to-ebook
-   pip install -r requirements.txt
-   ```
+### 1. 克隆并安装依赖
 
-2. **Set up API keys:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your keys
-   ```
-
-3. **Add your channels:**
-   ```bash
-   # Edit channels.txt with YouTube channel handles
-   @mkbhd
-   @veritasium
-   @3blue1brown
-   ```
-
-4. **Generate your ebook:**
-   ```bash
-   python main.py
-   ```
-
-## Getting API Keys
-
-### YouTube Data API (Free)
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project
-3. Enable "YouTube Data API v3"
-4. Create credentials → API Key
-5. Copy to `.env`
-
-### Anthropic API
-1. Go to [Anthropic Console](https://console.anthropic.com/)
-2. Create an API key
-3. Copy to `.env`
-
-## Web Dashboard
-
-Launch a friendly web interface:
 ```bash
-pip install streamlit
+git clone https://github.com/OneMoreJack/youtube-to-ebook.git
+cd youtube-to-ebook
+pip install -r requirements.txt
+```
+
+### 2. 配置 API Keys
+
+```bash
+cp .env.example .env
+```
+
+然后编辑 `.env` 文件，填入你的 API Keys：
+
+#### YouTube Data API (免费)
+
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建新项目
+3. 启用 "YouTube Data API v3"
+4. 创建凭据 → API Key
+5. 复制到 `.env` 的 `YOUTUBE_API_KEY`
+
+#### Anthropic Claude API
+
+> [!IMPORTANT]
+> **🇨🇳 中国大陆用户获取方式**
+> 
+> 由于 Anthropic 官方不对中国大陆开放，可通过代理服务获取：
+> 
+> 1. 访问 https://cc.honoursoft.cn/register?aff=dlK9 （我的邀请链接）
+> 2. 注册后获取 API key
+> 3. 在 `.env` 中配置：
+>    ```
+>    ANTHROPIC_BASE_URL=https://cc.honoursoft.cn
+>    ANTHROPIC_API_KEY=你的API密钥
+>    ```
+
+**官方 API（海外用户）：**
+1. 访问 [Anthropic Console](https://console.anthropic.com/)
+2. 创建 API key
+3. 在 `.env` 中配置 `ANTHROPIC_API_KEY`
+4. **删除** `ANTHROPIC_BASE_URL` 这一行
+
+---
+
+## 🎬 功能一：视频转电子书（新功能）
+
+直接将特定 YouTube 视频转换为 EPUB 电子书。
+
+### 命令行方式
+
+```bash
+# 单个视频
+python video_to_ebook.py VIDEO_ID
+
+# 多个视频
+python video_to_ebook.py VIDEO_ID_1 VIDEO_ID_2 VIDEO_ID_3
+
+# 支持 URL 格式
+python video_to_ebook.py https://www.youtube.com/watch?v=abc123
+
+# 自定义书名
+python video_to_ebook.py --title "My Collection" VIDEO_ID_1 VIDEO_ID_2
+```
+
+### Web 界面
+
+```bash
+python -m streamlit run video_dashboard.py
+```
+
+在浏览器中粘贴视频 ID 或 URL，点击生成即可。
+
+> 📂 生成的电子书保存在项目目录的 `ebooks/` 文件夹中，不会发送邮件。
+
+---
+
+## 📺 功能二：频道订阅周刊（原功能）
+
+订阅你喜欢的 YouTube 频道，自动获取最新视频并生成周刊。
+
+### 配置订阅频道
+
+编辑 `channels.txt`，每行一个频道 handle：
+
+```
+@mkbhd
+@veritasium
+@3blue1brown
+```
+
+### 生成周刊
+
+```bash
+python main.py
+```
+
+### 可选：Web Dashboard
+
+```bash
 python -m streamlit run dashboard.py
 ```
 
-## Automation (Mac)
+### 可选：邮件发送
 
-Run automatically every week:
+在 `.env` 中配置 Gmail：
+
+```
+GMAIL_ADDRESS=your_email@gmail.com
+GMAIL_APP_PASSWORD=your_app_password_here
+```
+
+App Password 获取：https://myaccount.google.com/apppasswords
+
+---
+
+## 🛠 进阶配置
+
+### Mac 自动化
+
+每周自动运行：
+
 ```bash
-# Copy the plist to LaunchAgents
+# 复制 plist 到 LaunchAgents
 cp com.youtube.newsletter.plist ~/Library/LaunchAgents/
 
-# Load it
+# 加载
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.youtube.newsletter.plist
 ```
 
-## Troubleshooting
+### 故障排除
 
-### "ModuleNotFoundError" when running automation
+**"ModuleNotFoundError" 错误**
 
-Your Mac may have multiple Python installations. The automation scripts use `python3`, but your packages might be installed in a different Python.
+Mac 可能有多个 Python 版本，需要确认正确的路径：
 
-**Fix:** Find your Python path and update the scripts:
 ```bash
-# Find where your Python is
 which python3
-
-# Update run_newsletter.sh and dashboard.py with the full path
-# Example: /Library/Frameworks/Python.framework/Versions/3.11/bin/python3
+# 用返回的完整路径替换脚本中的 python3
 ```
 
-## Known Issues & Solutions
+---
 
-This project documents several YouTube API quirks:
-
-| Problem | Solution |
-|---------|----------|
-| Shorts not filtered by duration | Check `/shorts/` URL pattern |
-| Search API not chronological | Use uploads playlist instead |
-| Transcript API syntax changed | Use instance method `ytt_api.fetch()` |
-| Cloud servers blocked | Run locally, not GitHub Actions |
-| Names misspelled in transcripts | Include video description in Claude context |
-| Articles truncated mid-sentence | Increase `max_tokens` in write_articles.py |
-
-See [SKILL.md](SKILL.md) for detailed explanations.
-
-## Project Structure
+## 📁 项目结构
 
 ```
-├── main.py              # Run the full pipeline
-├── get_videos.py        # Fetch videos from YouTube
-├── get_transcripts.py   # Extract video transcripts
-├── write_articles.py    # Transform to articles with Claude
-├── send_email.py        # Create EPUB & send email
-├── dashboard.py         # Streamlit web dashboard
-├── video_tracker.py     # Track processed videos
-├── channels.txt         # Your channel list
-├── .env                 # Your API keys (not committed)
-└── newsletters/         # Archive of generated ebooks
+├── video_to_ebook.py    # 视频转电子书（新功能）
+├── video_dashboard.py   # 视频转电子书 Web UI（新功能）
+├── main.py              # 频道订阅周刊入口
+├── dashboard.py         # 频道订阅 Web UI
+├── get_videos.py        # 获取频道最新视频
+├── get_transcripts.py   # 提取视频字幕
+├── write_articles.py    # Claude AI 生成文章
+├── create_ebook.py      # 生成 EPUB
+├── send_email.py        # 邮件发送
+├── channels.txt         # 订阅频道列表
+├── .env                 # API Keys（不提交）
+└── ebooks/              # 生成的电子书
 ```
+
+## 🐛 已知问题
+
+| 问题 | 解决方案 |
+|------|---------|
+| Shorts 无法通过时长过滤 | 检查 `/shorts/` URL |
+| 搜索 API 顺序不对 | 使用 uploads playlist |
+| 字幕 API 语法变更 | 使用 `ytt_api.fetch()` |
+| 云服务器被封禁 | 本地运行，不要用 GitHub Actions |
+| 字幕中人名拼写错误 | 将视频描述传给 Claude |
+| 文章被截断 | 增加 `max_tokens` |
 
 ## License
 
-MIT - Use freely, modify as needed.
+MIT
 
 ---
 

@@ -14,11 +14,11 @@ load_dotenv()
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # ========================================
-# YOUR FAVORITE CHANNELS GO HERE
+# DEFAULT CHANNELS (used if channels.txt doesn't exist)
 # Use the @ handle from the channel's YouTube page (most reliable)
 # Example: youtube.com/@MrBeast → use "@MrBeast"
 # ========================================
-CHANNELS = [
+DEFAULT_CHANNELS = [
     "@LatentSpacePod",
     "@ycombinator",
     "@a16z",
@@ -28,6 +28,30 @@ CHANNELS = [
     "@NoPriorsPodcast",
     "@DwarkeshPatel",
 ]
+
+# Path to channels.txt (in the same directory as this script)
+CHANNELS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "channels.txt")
+
+
+def load_channels():
+    """
+    Load channel handles from channels.txt if it exists.
+    Falls back to DEFAULT_CHANNELS if the file doesn't exist or is empty.
+    Format: one handle per line (e.g., @mkbhd)
+    Lines starting with # are treated as comments and ignored.
+    """
+    if os.path.exists(CHANNELS_FILE):
+        with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+            channels = []
+            for line in f:
+                line = line.strip()
+                # Skip empty lines and comments
+                if line and not line.startswith("#"):
+                    channels.append(line)
+            if channels:
+                return channels
+    
+    return DEFAULT_CHANNELS
 
 
 def get_channel_info(youtube, channel_handle):
@@ -116,12 +140,22 @@ def main():
     # Create a connection to YouTube
     youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
+    # Load channels from channels.txt or use defaults
+    channels = load_channels()
+    
+    # Show where channels are loaded from
+    if os.path.exists(CHANNELS_FILE):
+        print(f"Loading channels from: {CHANNELS_FILE}")
+    else:
+        print("channels.txt not found, using default channels")
+    print(f"Tracking {len(channels)} channels\n")
+
     print("Fetching latest LONG-FORM videos (skipping Shorts)...\n")
     print("=" * 60)
 
     videos = []
 
-    for channel_handle in CHANNELS:
+    for channel_handle in channels:
         print(f"Looking up: {channel_handle}")
 
         # Step 1: Get channel info (including uploads playlist)

@@ -10,9 +10,13 @@ from dotenv import load_dotenv
 # Load your API key
 load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL")
 
 # Create the Claude client
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+client = anthropic.Anthropic(
+    api_key=ANTHROPIC_API_KEY,
+    base_url=ANTHROPIC_BASE_URL
+)
 
 
 def write_article(video):
@@ -46,7 +50,7 @@ Format the article in clean markdown."""
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=8000,
             messages=[
                 {"role": "user", "content": prompt}
