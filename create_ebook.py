@@ -15,7 +15,7 @@ PROJECT_DIR = Path(__file__).parent
 DEFAULT_OUTPUT_DIR = PROJECT_DIR / "ebooks"
 
 
-def create_epub(articles, output_dir=None, book_title=None):
+def create_epub(articles, output_dir=None, book_title=None, cover_image=None):
     """
     Create an EPUB ebook from articles.
     
@@ -23,6 +23,7 @@ def create_epub(articles, output_dir=None, book_title=None):
         articles: List of dicts with keys: title, channel, url, article
         output_dir: Output directory path (default: ebooks/)
         book_title: Custom book title (default: "YouTube Digest - {date}")
+        cover_image: Optional bytes of the cover image
     
     Returns:
         Path to the generated EPUB file
@@ -55,8 +56,12 @@ def create_epub(articles, output_dir=None, book_title=None):
     # Set metadata
     book.set_identifier(f"youtube-ebook-{timestamp}")
     book.set_title(display_title)
-    book.set_language("en")
+    book.set_language("cn")  # Changed to Chinese for better compatibility with YouTube content often translated to Chinese
     book.add_author("YouTube to Ebook Generator")
+
+    # Set cover if provided
+    if cover_image:
+        book.set_cover("cover.jpg", cover_image)
 
     # CSS for nice formatting on ebook readers
     style = """

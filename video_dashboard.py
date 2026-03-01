@@ -5,6 +5,7 @@ A beautiful web interface to generate ebooks from YouTube videos.
 
 import streamlit as st
 import os
+import requests
 from pathlib import Path
 from datetime import datetime
 
@@ -342,6 +343,16 @@ with col1:
         label_visibility="visible"
     )
 
+with col2:
+    cover_file = st.file_uploader(
+        "Book Cover (optional)",
+        type=["jpg", "jpeg", "png"],
+        label_visibility="visible"
+    )
+
+if cover_file:
+    st.image(cover_file, caption="Cover Preview", width=150)
+
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Generate button
@@ -406,9 +417,26 @@ if st.button("📚 Generate Ebook", type="primary", use_container_width=True):
                         progress_bar.progress(1.0)
                         status_container.text("Creating EPUB...")
                         
+                        # Handle cover image
+                        cover_image_bytes = None
+                        if cover_file:
+                            cover_image_bytes = cover_file.read()
+                        elif articles and 'thumbnail' in videos_with_transcripts[0] and videos_with_transcripts[0]['thumbnail']:
+                            # Fallback to first video thumbnail
+                            try:
+                                status_container.text("Phase 3: Fetching video thumbnail for cover...")
+                                thumb_url = videos_with_transcripts[0]['thumbnail']
+                                response = requests.get(thumb_url, timeout=5)
+                                if response.status_code == 200:
+                                    cover_image_bytes = response.content
+                                    update_progress("3/3", "  ✓ Using video thumbnail as cover")
+                            except Exception as e:
+                                update_progress("3/3", f"  ⚠ Could not fetch thumbnail: {e}")
+
                         # Generate ebook
                         title = book_title if book_title else None
-                        epub_path = create_epub(articles, output_dir=EBOOKS_DIR, book_title=title)
+                        status_container.text("Phase 3: Creating EPUB...")
+                        epub_path = create_epub(articles, output_dir=EBOOKS_DIR, book_title=title, cover_image=cover_image_bytes)
                         
                         st.success(f"✓ Ebook created with {len(articles)} chapter(s)!")
                         

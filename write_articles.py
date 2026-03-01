@@ -5,10 +5,15 @@ Takes raw video transcripts and turns them into polished, readable articles.
 
 import os
 import anthropic
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load your API key
-load_dotenv()
+# Paths
+PROJECT_DIR = Path(__file__).parent
+ARTICLE_DIR = PROJECT_DIR / "articles"
+
+# Create articles directory
+ARTICLE_DIR.mkdir(exist_ok=True)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL")
 
@@ -17,6 +22,26 @@ client = anthropic.Anthropic(
     api_key=ANTHROPIC_API_KEY,
     base_url=ANTHROPIC_BASE_URL
 )
+
+
+def get_cached_article(video_id):
+    """
+    Get article from local cache if available.
+    """
+    cache_file = ARTICLE_DIR / f"{video_id}.md"
+    if cache_file.exists():
+        with open(cache_file, "r", encoding="utf-8") as f:
+            return f.read()
+    return None
+
+
+def save_article_cache(video_id, content):
+    """
+    Save article to local cache.
+    """
+    cache_file = ARTICLE_DIR / f"{video_id}.md"
+    with open(cache_file, "w", encoding="utf-8") as f:
+        f.write(content)
 
 
 def write_article(video):
@@ -48,6 +73,14 @@ Remix this YouTube transcript into a magazine article. Guidelines:
 
 Format the article in clean markdown."""
 
+    # Step 1: Check cache first
+    video_id = video.get("video_id")
+    if video_id:
+        cached = get_cached_article(video_id)
+        if cached:
+            return cached
+
+    # Step 2: Generate with AI
     try:
         message = client.messages.create(
             model="claude-sonnet-4-5-20250929",
@@ -57,7 +90,13 @@ Format the article in clean markdown."""
             ]
         )
 
-        return message.content[0].text
+        article_content = message.content[0].text
+        
+        # Step 3: Save to cache
+        if video_id and article_content:
+            save_article_cache(video_id, article_content)
+            
+        return article_content
 
     except Exception as e:
         print(f"  ⚠ Error generating article: {e}")

@@ -99,7 +99,8 @@ def get_video_info(video_id):
                 "description": info.get("description", ""),
                 "channel": info.get("channel", info.get("uploader", "Unknown Channel")),
                 "video_id": video_id,
-                "url": url
+                "url": url,
+                "thumbnail": info.get("thumbnail")
             }
     except Exception as e:
         print(f"  ⚠ Error fetching video info: {e}")
@@ -192,7 +193,18 @@ def generate_all_articles(videos, progress_callback=None):
     update_progress("0/0", "=" * 60)
     
     for i, video in enumerate(videos):
-        update_progress(f"{i+1}/{total}", f"Writing article {i+1}/{total}: {video['title'][:40]}...")
+        video_id = video.get("video_id")
+        cache_hit = False
+        if video_id:
+            from write_articles import ARTICLE_DIR
+            if (ARTICLE_DIR / f"{video_id}.md").exists():
+                cache_hit = True
+        
+        status_msg = f"Writing article {i+1}/{total}: {video['title'][:40]}..."
+        if cache_hit:
+            status_msg = f"Loading article {i+1}/{total} from cache: {video['title'][:40]}..."
+            
+        update_progress(f"{i+1}/{total}", status_msg)
         
         article_content = write_article(video)
         
@@ -203,7 +215,10 @@ def generate_all_articles(videos, progress_callback=None):
                 "url": video["url"],
                 "article": article_content
             })
-            update_progress(f"{i+1}/{total}", f"  ✓ Generated ({len(article_content)} chars)\n")
+            if cache_hit:
+                update_progress(f"{i+1}/{total}", f"  ✓ Loaded from cache\n")
+            else:
+                update_progress(f"{i+1}/{total}", f"  ✓ Generated ({len(article_content)} chars)\n")
         else:
             update_progress(f"{i+1}/{total}", f"  ✗ Failed to generate article\n")
     
@@ -213,7 +228,7 @@ def generate_all_articles(videos, progress_callback=None):
     return articles
 
 
-def generate_ebook(video_ids, book_title=None, output_dir=None, progress_callback=None):
+def generate_ebook(video_ids, book_title=None, output_dir=None, cover_image=None, progress_callback=None):
     """
     Main function: Generate an EPUB ebook from video IDs.
     
@@ -243,7 +258,7 @@ def generate_ebook(video_ids, book_title=None, output_dir=None, progress_callbac
     
     # Phase 3: Create EPUB
     print("\n📚 Creating EPUB ebook...")
-    epub_path = create_epub(articles, output_dir=output_dir, book_title=book_title)
+    epub_path = create_epub(articles, output_dir=output_dir, book_title=book_title, cover_image=cover_image)
     
     print("\n" + "=" * 60)
     print("  DONE!")
