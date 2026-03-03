@@ -48,17 +48,24 @@ def write_article(video):
     """
     Use Claude to transform a video transcript into a magazine-style article.
     """
+    # Step 1: Check cache first
+    video_id = video.get("video_id")
+    if video_id:
+        cached = get_cached_article(video_id)
+        if cached:
+            return cached
+            
     prompt = f"""You are a skilled magazine writer. Transform this YouTube video transcript into a well-written, engaging article.
 
-VIDEO TITLE: {video['title']}
-CHANNEL: {video['channel']}
-VIDEO URL: {video['url']}
+VIDEO TITLE: {video.get('title', 'Unknown')}
+CHANNEL: {video.get('channel', 'Unknown')}
+VIDEO URL: {video.get('url', '')}
 
 VIDEO DESCRIPTION:
-{video['description']}
+{video.get('description', '')}
 
 TRANSCRIPT:
-{video['transcript']}
+{video.get('transcript', '')}
 
 ---
 
@@ -72,13 +79,6 @@ Remix this YouTube transcript into a magazine article. Guidelines:
 - Do NOT include phrases like "In this video" - write it as a standalone article. Assume the reader has not watched the video and has zero context about it. This article is meant to be as a replacement, not complement, for watching the video.
 
 Format the article in clean markdown."""
-
-    # Step 1: Check cache first
-    video_id = video.get("video_id")
-    if video_id:
-        cached = get_cached_article(video_id)
-        if cached:
-            return cached
 
     # Step 2: Generate with AI
     try:

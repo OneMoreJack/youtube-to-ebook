@@ -5,12 +5,19 @@ A beautiful web interface to generate ebooks from YouTube videos.
 
 import streamlit as st
 import os
+import sys
 import requests
 from pathlib import Path
 from datetime import datetime
 
+# Inject local module path for streamlit_image_select
+sys.path.insert(0, str(Path(__file__).parent / "vendor"))
+
 from video_to_ebook import extract_video_id, generate_ebook, fetch_all_transcripts, generate_all_articles
 from create_ebook import create_epub, DEFAULT_OUTPUT_DIR
+from cover_generator import generate_cover_bytes
+from streamlit_image_select import image_select
+
 
 # Paths
 PROJECT_DIR = Path(__file__).parent
@@ -102,7 +109,8 @@ st.markdown("""
     }
 
     /* Buttons */
-    .stButton > button {
+    .stButton > button,
+    .stDownloadButton > button {
         font-family: 'Sora', sans-serif;
         font-weight: 500;
         font-size: 0.9rem;
@@ -110,15 +118,16 @@ st.markdown("""
         border-radius: 8px;
         padding: 0.6rem 1.5rem;
         transition: all 0.3s ease;
-        border: 1px solid var(--border-subtle);
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
+        border: 1px solid var(--border-subtle) !important;
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
     }
 
-    .stButton > button:hover {
-        border-color: var(--accent-gold-dim);
-        background: var(--accent-gold-glow);
-        color: var(--accent-gold);
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        border-color: var(--accent-gold-dim) !important;
+        background: var(--accent-gold-glow) !important;
+        color: var(--accent-gold) !important;
         transform: translateY(-1px);
     }
 
@@ -136,19 +145,24 @@ st.markdown("""
 
     /* Inputs */
     .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.9rem;
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border-subtle);
-        border-radius: 8px;
-        color: var(--text-primary);
+    .stTextArea > div > div > textarea,
+    .stTextInput input,
+    .stTextArea textarea {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 0.9rem !important;
+        background-color: var(--bg-tertiary) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 8px !important;
+        color: var(--text-primary) !important;
+        caret-color: var(--accent-gold) !important;
     }
 
     .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus {
-        border-color: var(--accent-gold-dim);
-        box-shadow: 0 0 0 2px var(--accent-gold-glow);
+    .stTextArea > div > div > textarea:focus,
+    .stTextInput input:focus,
+    .stTextArea textarea:focus {
+        border-color: var(--accent-gold-dim) !important;
+        box-shadow: 0 0 0 2px var(--accent-gold-glow) !important;
     }
 
     /* Info boxes */
@@ -157,6 +171,37 @@ st.markdown("""
         border: 1px solid var(--border-subtle);
         border-radius: 12px;
         border-left: 3px solid var(--accent-gold);
+    }
+
+    /* File Uploader */
+    [data-testid="stFileUploadDropzone"] {
+        background-color: var(--bg-tertiary) !important;
+        border: 1px dashed var(--accent-gold-dim) !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stFileUploadDropzone"] * {
+        color: var(--text-primary) !important;
+    }
+
+    /* Hide image fullscreen button */
+    [data-testid="StyledFullScreenButton"] {
+        display: none !important;
+    }
+    
+    /* Compact Cover Customization Controls */
+    [data-testid="stSlider"], 
+    [data-testid="stRadio"] {
+        margin-bottom: -1.2rem !important;
+    }
+    
+    /* Hide slider min/max text to prevent overlap */
+    [data-testid="stSlider"] [data-testid="stTickBarMin"],
+    [data-testid="stSlider"] [data-testid="stTickBarMax"] {
+        display: none !important;
+    }
+    /* Specific selector for the bottom numbers in Streamlit slider */
+    div[data-testid="stSlider"] > div:nth-child(2) > div:nth-child(2) {
+        display: none !important;
     }
 
     /* Code blocks */
@@ -323,40 +368,146 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Input section
-st.markdown("## Video IDs")
-st.caption("Enter YouTube video IDs or URLs, one per line")
+import base64
 
-video_input = st.text_area(
-    "Video IDs",
-    height=150,
-    placeholder="dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=VIDEO_ID\n...",
-    label_visibility="collapsed"
-)
+# Two-column layout
+col1, col2 = st.columns([1, 2.5], gap="large")
 
-# Book title
-col1, col2 = st.columns([3, 1])
 with col1:
+    st.markdown("## Configuration")
+    
+    st.markdown("#### Video IDs")
+    st.caption("Enter YouTube video IDs or URLs, one per line")
+    
+    video_input = st.text_area(
+        "Video IDs",
+        height=150,
+        placeholder="dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=VIDEO_ID\n...",
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("#### Book Details")
+    default_title_hint = f"Youtube Collection {datetime.now().strftime('%y.%m.%d')}"
     book_title = st.text_input(
         "Book Title (optional)",
-        placeholder="My YouTube Collection",
+        placeholder=default_title_hint,
         label_visibility="visible"
     )
-
-with col2:
+    
     cover_file = st.file_uploader(
         "Book Cover (optional)",
         type=["jpg", "jpeg", "png"],
         label_visibility="visible"
     )
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    generate_clicked = st.button("📚 Generate Ebook", type="primary", use_container_width=True)
 
-if cover_file:
-    st.image(cover_file, caption="Cover Preview", width=150)
+with col2:
+    st.markdown("## Cover Preview")
+    
+    display_title = book_title.strip() if book_title.strip() else default_title_hint
+    cover_file_bytes = cover_file.getvalue() if cover_file else None
+    
+    col_preview, col_settings = st.columns([1, 1.4], gap="large")
+    
+    import glob
+    all_covers = sorted(glob.glob("default_covers/*.jpg"))
+    if not all_covers:
+        all_covers = sorted(glob.glob("default_covers/*.jpeg"))
+        
+    if "bg_choice" not in st.session_state:
+        st.session_state.bg_choice = all_covers[0] if all_covers else None
+        
+    with col_settings:
+        st.markdown(
+            "<div style='color: #888; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;'>Background Layout</div>",
+            unsafe_allow_html=True
+        )
+        
+        # Determine current index
+        current_idx = 0
+        if st.session_state.bg_choice in all_covers:
+            current_idx = all_covers.index(st.session_state.bg_choice)
+
+        # Grid height matches around 2 rows of square thumbnails
+        gallery = st.container(height=230)
+        with gallery:
+            selected_idx = image_select(
+                label="",
+                images=all_covers,
+                use_container_width=True,
+                return_value="index",
+                index=current_idx,
+                key="bg_gallery"
+            )
+        
+        if all_covers:
+            st.session_state.bg_choice = all_covers[selected_idx]
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='color: #888; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;'>Typography & Layout</div>",
+            unsafe_allow_html=True
+        )
+        
+        # Style Presets
+        st.markdown("<div style='font-size: 13px; margin-bottom: 8px; font-weight: 500;'>Quick Presets</div>", unsafe_allow_html=True)
+        preset_cols = st.columns(3)
+        if preset_cols[0].button("Classic White", use_container_width=True):
+            st.session_state.update({"font_size": 72, "text_color": "#ffffff", "text_align": "center", "text_y": 0, "text_x": 0})
+            st.rerun()
+        if preset_cols[1].button("Light Minimal", use_container_width=True):
+            st.session_state.update({"font_size": 60, "text_color": "#222222", "text_align": "center", "text_y": -150, "text_x": 0})
+            st.rerun()
+        if preset_cols[2].button("Gold Elegant", use_container_width=True):
+            st.session_state.update({"font_size": 84, "text_color": "#D4A855", "text_align": "center", "text_y": 100, "text_x": 0})
+            st.rerun()
+            
+        # Initialize defaults in session_state if they don't exist
+        defaults = {"font_size": 72, "text_color": "#ffffff", "text_align": "center", "text_x": 0, "text_y": 0}
+        for k, v in defaults.items():
+            if k not in st.session_state:
+                st.session_state[k] = v
+
+        text_color = st.color_picker("Text Color", key="text_color")
+        
+        font_size = st.slider("Font Size", 40, 100, key="font_size")
+        text_x = st.slider("Horizontal Offset", -400, 400, key="text_x")
+        text_y = st.slider("Vertical Offset", -600, 600, key="text_y")
+        text_align = st.radio("Text Alignment", ["left", "center", "right"], horizontal=True, key="text_align")
+
+    # Determine base image bytes
+    base_img_to_use = cover_file_bytes
+    if not base_img_to_use:
+        try:
+            with open(st.session_state.bg_choice, "rb") as f:
+                base_img_to_use = f.read()
+        except:
+            base_img_to_use = None
+
+    # Generate rendering
+    preview_bytes = generate_cover_bytes(
+        title=display_title,
+        base_img_bytes=base_img_to_use,
+        font_size=font_size,
+        text_align=text_align,
+        text_x_offset=text_x,
+        text_y_offset=text_y,
+        text_color=text_color
+    )
+    
+    with col_preview:
+        st.markdown(
+            "<div style='text-align: center; color: #888; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;'>PREVIEW</div>",
+            unsafe_allow_html=True
+        )
+        st.image(preview_bytes, use_container_width=True, caption=display_title)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Generate button
-if st.button("📚 Generate Ebook", type="primary", use_container_width=True):
+# Generate logic
+if generate_clicked:
     # Parse video IDs
     lines = video_input.strip().split("\n")
     video_ids = [line.strip() for line in lines if line.strip()]
@@ -417,26 +568,9 @@ if st.button("📚 Generate Ebook", type="primary", use_container_width=True):
                         progress_bar.progress(1.0)
                         status_container.text("Creating EPUB...")
                         
-                        # Handle cover image
-                        cover_image_bytes = None
-                        if cover_file:
-                            cover_image_bytes = cover_file.read()
-                        elif articles and 'thumbnail' in videos_with_transcripts[0] and videos_with_transcripts[0]['thumbnail']:
-                            # Fallback to first video thumbnail
-                            try:
-                                status_container.text("Phase 3: Fetching video thumbnail for cover...")
-                                thumb_url = videos_with_transcripts[0]['thumbnail']
-                                response = requests.get(thumb_url, timeout=5)
-                                if response.status_code == 200:
-                                    cover_image_bytes = response.content
-                                    update_progress("3/3", "  ✓ Using video thumbnail as cover")
-                            except Exception as e:
-                                update_progress("3/3", f"  ⚠ Could not fetch thumbnail: {e}")
-
                         # Generate ebook
-                        title = book_title if book_title else None
                         status_container.text("Phase 3: Creating EPUB...")
-                        epub_path = create_epub(articles, output_dir=EBOOKS_DIR, book_title=title, cover_image=cover_image_bytes)
+                        epub_path = create_epub(articles, output_dir=EBOOKS_DIR, book_title=display_title, cover_image=preview_bytes)
                         
                         st.success(f"✓ Ebook created with {len(articles)} chapter(s)!")
                         

@@ -143,6 +143,15 @@ def fetch_all_transcripts(video_ids, progress_callback=None):
         
         update_progress(f"{i+1}/{total}", f"  → {video['title'][:50]}...")
         
+        # Step 1.5: Check if article is already cached
+        from write_articles import get_cached_article
+        cached_article = get_cached_article(video_id)
+        if cached_article:
+            update_progress(f"{i+1}/{total}", f"  ✓ Article already cached, skipping transcript...")
+            video["transcript"] = "" # Avoid KeyError in write_article
+            videos_with_transcripts.append(video)
+            continue
+        
         # Step 2: Check cache first
         transcript = get_cached_transcript(video_id)
         if transcript:
