@@ -5,6 +5,11 @@
 FORZARA.md
 SHARE_ON_X.md
 
+# Repository maintenance
+vendor/
+screenshots/
+*.plist
+
 # Generated files
 processed_videos.json
 *.epub
@@ -17,6 +22,10 @@ articles/
 # Python
 __pycache__/
 *.pyc
+test_*.py
+
+# Test assets
+test_*.jpg
 
 # Mac files
 .DS_Store
